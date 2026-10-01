@@ -1,25 +1,26 @@
 # FroggyHeroes2
 
-A working Free Heroes II port for the **GB300** handheld, built on top of
+A working Free Heroes II port for the **GB300** handheld and the **SF2000**
+handheld console, built on top of
 [sf2000_multicore](https://github.com/Trademarked69/sf2000_multicore).
 
-Free Heroes II never had a native SF2000/GB300 core. This project takes the
+Free Heroes II never had a native core for either device. This project takes the
 upstream engine source, wraps it in a libretro core with a libco-based
 coroutine scheduler (no OS threads), and fixes the parts that did not survive
 the port: audio, input and screen layout.
 
-Target: **GB300V2** (ST7789V, 320x240, MIPS32r2).
+Targets: **GB300V2** and **SF2000** (both 320x240, MIPS32r2).
 
 ## Quick start
 
-Grab the release assets and copy them onto your SD card:
+Grab the release archive and copy the files onto your SD card:
 
 ```
-<SD>/cores/fheroes2/core_87000000              <- fheroes2_gb300v2.sf2k
-<SD>/ROMS/fheroes2/DATA/HEROES2.AGG            <- HEROES2.AGG
-<SD>/ROMS/fheroes2/MAPS/BROKENA.MP2            <- BROKENA.MP2
-<SD>/ROMS/fheroes2/GAMES/TUTORIAL.GM1          <- TUTORIAL.GM1
-<SD>/ROMS/fheroes2/fheroes2.cfg                <- fheroes2.cfg
+<SD>/cores/fheroes2/core_87000000              <- gb300/ or sf2000/
+<SD>/ROMS/fheroes2/DATA/HEROES2.AGG            <- game/HEROES2.AGG
+<SD>/ROMS/fheroes2/MAPS/BROKENA.MP2            <- game/BROKENA.MP2
+<SD>/ROMS/fheroes2/GAMES/TUTORIAL.GM1          <- game/TUTORIAL.GM1
+<SD>/ROMS/fheroes2/fheroes2.cfg                <- game/fheroes2.cfg
 ```
 
 Then create the ROM stub that points the menu at the core. The format is
@@ -29,16 +30,73 @@ Then create the ROM stub that points the menu at the core. The format is
 <SD>/ROMS/fheroes2/fheroes2;HEROES2.AGG.gba
 ```
 
-containing a single line:
+containing a single line, no trailing newline:
 
 ```
 fheroes2;fheroes2;HEROES2.AGG.
 ```
 
+The two cores are **not interchangeable** — each is linked against its own
+firmware layout. GB300 uses `gb300/fheroes2.sf2k`, SF2000 uses
+`sf2000/fheroes2.sf2k`.
+
 The included game data is the official **H2DEMO** demo, which is freely
 redistributable. It contains one campaign and one map. To play the full game,
 replace `DATA/HEROES2.AGG` with your own copy from a legitimate purchase — the
 core works with either.
+
+## Controls
+
+The console has no pointer, so the core emulates a mouse: the D-pad moves a
+virtual cursor and the buttons act as clicks and keys.
+
+| Button | Action |
+| :--- | :--- |
+| D-pad | Move cursor (accelerates the longer you hold) |
+| **L** / A | Left click — select, confirm, move hero, attack, build |
+| **R** / B | Right click — hold to inspect a unit or object |
+| START | Return / confirm |
+| SELECT | Escape / cancel |
+| X | Space — next hero |
+| Y | Tab — show/hide minimap |
+
+Cursor speed is 2 px/frame, ramping to 4 px after 8 frames held and 7 px after
+20 frames held. L and R are pure clicks and do not affect it, so you can hold R
+to keep the unit information window open without the cursor drifting away.
+
+**Left click (L)** selects the item under the cursor; on the adventure map it
+moves the selected hero, opens objects, and buys troops or buildings in a town.
+In battle it attacks the stack under the cursor. End the turn with the hourglass
+on the button bar.
+
+**Right click (R)** held over anything shows information about it — full stack
+statistics in battle, hero and town details on the map — and closes on release.
+
+### Engine key bindings
+
+The engine already binds these keys; the gamepad exposes them:
+
+| Key | Button | Action |
+| :--- | :--- | :--- |
+| Return | START | confirm, close messages, press OK |
+| Escape | SELECT | cancel, close dialogs; on the map also toggles the button bar |
+| Space | X | next hero |
+| Tab | Y | show/hide minimap |
+
+Other engine bindings — `1` (control panel), `7` (status bar), `Backspace`
+(hero icons), `Alt` (spell book), `m` (movement mode) — are not mapped to any
+button. The control panel at the top of the screen is the mouse equivalent of
+the first three.
+
+### The minimap
+
+The engine binds the minimap to Tab, but nothing ever generated that key, so the
+radar was only reachable by clicking the first button of the top control panel.
+Y now sends Tab.
+
+The toggle only works with the sidebar hidden (`pocket pc = 1` in the config).
+On a 320x240 screen there is room for either the minimap or the hero icon bar,
+status bar and button bar — not both, so enabling the radar hides the others.
 
 ## Configuration
 
@@ -46,41 +104,31 @@ core works with either.
 
 | Key | Notes |
 | :--- | :--- |
-| `videomode` | `320x240` for this device. Any QVGA value enables the wide layout. |
+| `videomode` | `320x240` for this screen. Any QVGA value enables the wide layout. |
 | `sound` | `1` enables sound effects. |
 | `sound volume` | `0`–`10`. |
-| `music` | `off` — the demo has no MIDI data. |
+| `music` | `off` — the demo carries no MIDI data. |
 | `animation` | Lower is smoother on this hardware. |
-| `pocket pc` | `1` for the full-width map. |
+| `pocket pc` | `1` for the full-width map and the working minimap toggle. |
 
 > **Boolean values must be numeric.** Write `sound = 1`, **not** `sound = on`.
 > The config parser runs values through `IntParams()` → `String::ToInt()`, and
-> `"on"` does not parse — it yields `0`, which this codebase reads as **off**.
-> Writing `on` silently switches every one of those features *off*.
+> `"on"` does not parse — it returns `0`, which this codebase reads as **off**.
+> Using `on` silently switches every such feature off. The bundled `fheroes2.cfg`
+> is correct; the file is commented to make the reason clear.
 
-## Controls
-
-| Button | Action |
-| :--- | :--- |
-| D-pad | Move cursor (accelerates while held) |
-| **L** / A | Left click — select, confirm, move hero, attack, build |
-| **R** / B | Right click — hold to inspect a unit or object |
-| START | Return / confirm |
-| SELECT | Escape / cancel |
-| X | Space |
-| Y | H (next hero) |
-
-Holding L or R does not double cursor speed, so R can be held to keep the unit
-info window open.
+The config file also selects the menu you get: with it present the game uses its
+QVGA layout and hidden sidebar, without it a different, more cluttered path is
+taken. Keep it.
 
 ## What this fixes
 
-The original port booted but was unusable. Four problems were addressed.
+The original port booted but was unusable. Five problems were addressed.
 
 ### 1. No sound at all
 
-SDL's audio init walked the driver bootstrap table and found nothing, because
-the only compiled-in driver (`DUMMY`) reported itself unavailable unless
+SDL's audio init walked its driver table and found nothing, because the only
+compiled-in driver (`DUMMY`) reported itself unavailable unless
 `SDL_AUDIODRIVER=dummy` was set in the environment — and this SDL has no real
 environment (`SDL_getenv` only sees variables set through `SDL_putenv`, and
 nothing set an audio one). `Mixer::Init()` therefore left the mixer invalid and
@@ -106,26 +154,29 @@ therefore switched every one of those features *off*.
 
 ### 3. Input
 
-Mouse emulation via D-pad, with L mapped to left click and R to right click, and
-cursor acceleration ramped by hold duration.
+L and R were doubling cursor speed, which made it impossible to hold R for unit
+inspection. They now act purely as mouse clicks, and cursor speed ramps by hold
+duration instead.
 
 ### 4. Screen layout
 
-The adventure map originally reserved a fixed ~150px sidebar for radar, icons,
-buttons and status, squeezing the playfield down to about 170px of a 320px
+The adventure map reserved a fixed ~150px sidebar for radar, icons, buttons and
+status, squeezing the playfield down to about 170px of a 320px screen. At QVGA
+the engine switches to its hidden-interface layout, so the map now fills the
 screen.
 
-At QVGA resolution the engine already enables `GLOBAL_POCKETPC` and
-`GAME_HIDE_INTERFACE` on its own, which collapses that sidebar and widens the
-map to the full screen. The only requirement is a `fheroes2.cfg` with
-`videomode = 320x240`.
+### 5. Minimap
+
+Bound to Tab in the engine, reachable only by clicking the top control panel.
+Now on Y — see [Controls](#controls).
 
 ## Building
 
-From the `sf2000_multicore` checkout:
+From the `sf2000_multicore` checkout, one binary per device:
 
 ```sh
 make FROGGY_TYPE=GB300V2 CONSOLE=fheroes2 CORE=cores/fheroes2
+make FROGGY_TYPE=SF2000  CONSOLE=fheroes2 CORE=cores/fheroes2
 ```
 
 ## Credits and licensing
@@ -138,9 +189,9 @@ This core bundles code from three projects with different licences:
 | SDL 1.2.15 | SDL project | LGPL-2.1 |
 | sf2000_multicore frontend | [Trademarked69/sf2000_multicore](https://github.com/Trademarked69/sf2000_multicore) (forked from [madcock](https://github.com/madcock/sf2000_multicore), from [kobily](https://gitlab.com/kobily/sf2000_multicore)) | ISC |
 
-Because the Free Heroes II engine is GPL-2.0, this binary is distributed under
-the **GNU General Public License v2.0**, which is the most restrictive term in
-the combination. The full GPL-2.0 text is in [`LICENSE`](LICENSE).
+Because the Free Heroes II engine is GPL-2.0, these binaries are distributed
+under the **GNU General Public License v2.0**, which is the most restrictive
+term in the combination. The full GPL-2.0 text is in [`LICENSE`](LICENSE).
 
 Attribution required by the licences:
 
@@ -150,5 +201,5 @@ Attribution required by the licences:
 - SDL 1.2.15 is copyright © Sam Lantinga and the SDL contributors.
 
 *Heroes of Might and Magic II* was developed by New World Computing and published
-by 3DO. The bundled **H2DEMO** demo is freely redistributable; the full game is
-not included and must be supplied by you from a legitimate copy.
+by 3DO. The bundled **H2DEMO** is freely redistributable; the full game is not
+included and must be supplied by you from a legitimate copy.

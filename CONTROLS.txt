@@ -1,0 +1,120 @@
+Controls and button mapping
+===========================
+
+The GB300 and SF2000 have no pointer, so the core emulates a mouse. D-pad moves
+the virtual cursor; the face and shoulder buttons act as mouse clicks and
+keyboard keys.
+
+
+Gamepad buttons
+---------------
+
+  GB300 / SF2000     Action                    SDL event
+
+  D-pad up            move cursor up           SDL motion
+  D-pad down          move cursor down         SDL motion
+  D-pad left          move cursor left         SDL motion
+  D-pad right         move cursor right        SDL motion
+
+  L  or  A            LEFT CLICK               SDL_BUTTON_LEFT
+  R  or  B            RIGHT CLICK              SDL_BUTTON_RIGHT
+
+  START               Return / confirm         SDLK_RETURN
+  SELECT              Escape / cancel          SDLK_ESCAPE
+  X                   Space                    SDLK_SPACE
+  Y                   Tab (minimap)            SDLK_TAB
+
+
+Mouse emulation
+---------------
+
+The cursor starts at the centre of the screen (160,120) and moves at 2 pixels
+per frame, ramping to 4 pixels after 8 frames held and 7 pixels after 20 frames
+held, so short taps are precise and long drags cover the map quickly.
+
+L and R are pure clicks and do not change cursor speed. That is deliberate: it
+means you can hold R to keep the information window open without the cursor
+drifting away underneath it.
+
+Both A and L work as left click, and both B and R as right click. Either
+pairing is fine; A/B is the traditional layout, L/R puts the two mouse buttons
+under your index fingers.
+
+
+Left click (L / A)
+------------------
+
+  main menu           select the item under the cursor
+  adventure map       move the selected hero there; open the object under the
+                      cursor; buy troops and buildings in a town
+  battle              attack the enemy stack under the cursor
+  dialogs             press the button under the cursor
+
+To end the turn, click the hourglass / "End Turn" button on the button bar.
+
+
+Right click (R / B)
+-------------------
+
+Hold it over something to get information about it, release to close the window:
+
+  in battle           full statistics of that stack — attack, defence, damage,
+                      hit points, speed — yours or the enemy's
+  on the map          details of a hero, town, artefact or resource object
+  in a dialog         cancels it, same as Escape
+
+
+Keyboard actions
+----------------
+
+These are the keys the engine already binds, exposed on the gamepad:
+
+  START (Return)      confirm, close a message window, press OK
+
+  SELECT (Escape)     cancel, close a dialog. On the adventure map the engine
+                      also uses Escape to toggle the button bar, so this doubles
+                      as "hide/show buttons"
+
+  X (Space)           next hero — advances to the following hero without
+                      waiting for the turn order
+
+  Y (Tab)             show/hide the minimap
+
+
+How Y came to be the minimap
+----------------------------
+
+The engine binds the minimap to the Tab key:
+
+    case KEY_TAB:  SwitchShowRadar(); break;      (game_startgame.cpp:817)
+
+but nothing ever generated a Tab, so the radar could only be reached by
+clicking the first button of the control panel at the top of the screen.
+
+Y previously sent `h`. That key does something only in the main menu (high
+scores), on the new-game screen (hot seat) and in battle (hero window) — all of
+which are comfortably mouse-navigable. On the adventure map, where you actually
+want the minimap, `h` did nothing at all. So Y was swapped to Tab.
+
+Note the radar toggle only works while the sidebar is hidden, that is with
+`pocket pc = 1` in fheroes2.cfg — SwitchShowRadar() returns immediately
+otherwise. And on a 320x240 screen there is not enough room for everything:
+turning the minimap on hides the hero icon bar, the status bar and the button
+bar. Pick one or the other.
+
+
+Buttons not mapped
+------------------
+
+The engine binds several more keys that no gamepad button sends:
+
+  1        show/hide the control panel
+  7        show/hide the status bar
+  Backspace show/hide the hero icon bar
+  t s l f p i d  various
+  Alt     spell book
+  m        movement mode
+  o        game options
+
+The control panel at the top of the screen is the mouse equivalent of the first
+four: it toggles the minimap, hero icons, button bar and status bar.

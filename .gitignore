@@ -1,0 +1,6 @@
+# build artefacts
+*.o
+*.a
+*.so
+*.ppm
+*.png

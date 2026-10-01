@@ -59,6 +59,7 @@ virtual cursor and the buttons act as clicks and keys.
 | SELECT | Escape / cancel |
 | X | Space — next hero |
 | Y | Tab — show/hide minimap |
+| **SELECT + START** | Pause menu — save state, load state, reset, exit to FrogUI |
 
 Cursor speed is 2 px/frame, ramping to 4 px after 8 frames held and 7 px after
 20 frames held. L and R are pure clicks and do not affect it, so you can hold R
@@ -97,6 +98,21 @@ Y now sends Tab.
 The toggle only works with the sidebar hidden (`pocket pc = 1` in the config).
 On a 320x240 screen there is room for either the minimap or the hero icon bar,
 status bar and button bar — not both, so enabling the radar hides the others.
+
+### Pause menu
+
+SELECT + START opens the firmware pause menu: save state, load state, reset and
+exit. Exit returns to the FrogUI menu.
+
+Two things worth knowing:
+
+- Opening the menu is what snapshots the framebuffer that save states are
+  written from. Open it once before relying on save states, or the state file
+  will be empty.
+- The frontend logs which path it took. If the menu does not appear, look for
+  `opening firmware pause menu` versus `exiting to FrogUI menu` in
+  `Multicore.log` — the latter means the core was not recognised as
+  `fheroes2`, which also happens if you rename the library.
 
 ## Configuration
 
@@ -169,6 +185,21 @@ screen.
 
 Bound to Tab in the engine, reachable only by clicking the top control panel.
 Now on Y — see [Controls](#controls).
+
+### 6. Pause menu and save states
+
+SELECT + START exited straight to the FrogUI menu on every core: the call to the
+firmware pause menu had been dropped, leaving the hook to jump to the menu
+launcher. Restored for this core.
+
+That call is also where the framebuffer copy is taken, which is what save states
+are written from. Without it `state_framebuffer` stayed `NULL`, and both
+`wrap_state_save` and the autosave path silently skipped saving because they
+guard on `if (state_framebuffer)` — so autosave and the L+R+X save-state hotkey
+wrote nothing.
+
+Other cores keep the previous behaviour, since the J2ME core unwinds its Java
+task on SELECT + START before firmware reaches the hook.
 
 ## Building
 

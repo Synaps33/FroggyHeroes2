@@ -24,6 +24,9 @@ Gamepad buttons
   X                   Space                    SDLK_SPACE
   Y                   Tab (minimap)            SDLK_TAB
 
+  SELECT + START      pause menu               (handled by the frontend,
+                                                not a libretro event)
+
 
 Mouse emulation
 ---------------
@@ -118,3 +121,22 @@ The engine binds several more keys that no gamepad button sends:
 
 The control panel at the top of the screen is the mouse equivalent of the first
 four: it toggles the minimap, hero icons, button bar and status bar.
+
+Pause menu
+----------
+
+SELECT + START opens the firmware pause menu. It is intercepted by the
+multicore frontend before it ever reaches the core, which is why it arrives as
+no libretro event and does not appear in the table above.
+
+The menu offers the usual entries — save state, load state, reset and exit.
+Choosing exit returns to the FrogUI menu.
+
+Two things to know:
+
+  * Opening the menu is what snapshots the framebuffer that save states are
+    written from. Save before the menu has been opened at least once, or the
+    state file is empty.
+
+  * This core keeps the old behaviour of exiting straight to FrogUI for every
+    other core, because the J2ME core handles SELECT + START itself.

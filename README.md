@@ -8,15 +8,74 @@ upstream engine source, wraps it in a libretro core with a libco-based
 coroutine scheduler (no OS threads), and fixes the parts that did not survive
 the port: audio, input and screen layout.
 
-## Status
-
-Working. The game loads, plays, and has sound.
-
 Target: **GB300V2** (ST7789V, 320x240, MIPS32r2).
+
+## Quick start
+
+Grab the release assets and copy them onto your SD card:
+
+```
+<SD>/cores/fheroes2/core_87000000              <- fheroes2_gb300v2.sf2k
+<SD>/ROMS/fheroes2/DATA/HEROES2.AGG            <- HEROES2.AGG
+<SD>/ROMS/fheroes2/MAPS/BROKENA.MP2            <- BROKENA.MP2
+<SD>/ROMS/fheroes2/GAMES/TUTORIAL.GM1          <- TUTORIAL.GM1
+<SD>/ROMS/fheroes2/fheroes2.cfg                <- fheroes2.cfg
+```
+
+Then create the ROM stub that points the menu at the core. The format is
+`core;dir;file.`:
+
+```
+<SD>/ROMS/fheroes2/fheroes2;HEROES2.AGG.gba
+```
+
+containing a single line:
+
+```
+fheroes2;fheroes2;HEROES2.AGG.
+```
+
+The included game data is the official **H2DEMO** demo, which is freely
+redistributable. It contains one campaign and one map. To play the full game,
+replace `DATA/HEROES2.AGG` with your own copy from a legitimate purchase — the
+core works with either.
+
+## Configuration
+
+`fheroes2.cfg` sits next to the game data.
+
+| Key | Notes |
+| :--- | :--- |
+| `videomode` | `320x240` for this device. Any QVGA value enables the wide layout. |
+| `sound` | `1` enables sound effects. |
+| `sound volume` | `0`–`10`. |
+| `music` | `off` — the demo has no MIDI data. |
+| `animation` | Lower is smoother on this hardware. |
+| `pocket pc` | `1` for the full-width map. |
+
+> **Boolean values must be numeric.** Write `sound = 1`, **not** `sound = on`.
+> The config parser runs values through `IntParams()` → `String::ToInt()`, and
+> `"on"` does not parse — it yields `0`, which this codebase reads as **off**.
+> Writing `on` silently switches every one of those features *off*.
+
+## Controls
+
+| Button | Action |
+| :--- | :--- |
+| D-pad | Move cursor (accelerates while held) |
+| **L** / A | Left click — select, confirm, move hero, attack, build |
+| **R** / B | Right click — hold to inspect a unit or object |
+| START | Return / confirm |
+| SELECT | Escape / cancel |
+| X | Space |
+| Y | H (next hero) |
+
+Holding L or R does not double cursor speed, so R can be held to keep the unit
+info window open.
 
 ## What this fixes
 
-The original core booted but was unusable. Four problems were addressed:
+The original port booted but was unusable. Four problems were addressed.
 
 ### 1. No sound at all
 
@@ -31,9 +90,9 @@ the game silently dropped every sound effect.
 compiled in, so it was always the right answer.
 
 Separately, SDL never starts a mixing thread on this platform
-(`SDL_SYS_CreateThread` is stubbed out), so nothing would ever invoke the
-mixer callback. The core drives it manually instead, emitting exactly one
-buffer per video frame through `audio_batch_cb`.
+(`SDL_SYS_CreateThread` is stubbed out), so nothing would ever invoke the mixer
+callback. The core drives it manually instead, emitting exactly one buffer per
+video frame through `audio_batch_cb`.
 
 `SDL_LockAudio_Default()` also got a `mixer_lock` null guard, since the mutex is
 never created when `SDL_THREADS_DISABLED` is set.
@@ -45,24 +104,10 @@ never created when `SDL_THREADS_DISABLED` is set.
 codebase `0` means **off**. A config written with `sound = on` / `pocket pc = on`
 therefore switched every one of those features *off*.
 
-The shipped `fheroes2.cfg` uses `1` instead. See the comment in that file.
-
 ### 3. Input
 
-Mouse emulation via D-pad, with click buttons mapped to L/R:
-
-| Button | Action |
-| :--- | :--- |
-| D-pad | Move cursor (accelerates while held) |
-| **L** / A | Left click — select, confirm, move hero, attack, build |
-| **R** / B | Right click — hold to inspect a unit or object |
-| START | Return / confirm |
-| SELECT | Escape / cancel |
-| X | Space |
-| Y | H (next hero) |
-
-Holding L or R no longer doubles cursor speed, so R can be held to keep the
-unit info window open.
+Mouse emulation via D-pad, with L mapped to left click and R to right click, and
+cursor acceleration ramped by hold duration.
 
 ### 4. Screen layout
 
@@ -74,59 +119,6 @@ At QVGA resolution the engine already enables `GLOBAL_POCKETPC` and
 `GAME_HIDE_INTERFACE` on its own, which collapses that sidebar and widens the
 map to the full screen. The only requirement is a `fheroes2.cfg` with
 `videomode = 320x240`.
-
-## Installation
-
-You need your own legally obtained copy of the game data. The core does **not**
-include `HEROES2.AGG`.
-
-1. Copy `fheroes2_gb300v2.sf2k` to the core directory on your SD card:
-
-   ```
-   <SD>/cores/fheroes2/core_87000000
-   ```
-
-2. Place the game data under `<SD>/ROMS/fheroes2/`:
-
-   ```
-   <SD>/ROMS/fheroes2/DATA/HEROES2.AGG
-   <SD>/ROMS/fheroes2/fheroes2.cfg
-   ```
-
-3. Create the ROM stub that points the menu at the core. The format is
-   `core;dir;file.`:
-
-   ```
-   <SD>/ROMS/fheroes2/fheroes2;HEROES2.AGG.gba
-   ```
-
-   containing the single line:
-
-   ```
-   fheroes2;fheroes2;HEROES2.AGG.
-   ```
-
-4. Copy the `fheroes2.cfg` example from this release into
-   `<SD>/ROMS/fheroes2/` and edit it to taste. **Keep the boolean values numeric**
-   (`sound = 1`, not `sound = on`) — see issue 2 above.
-
-5. Rebuild the menu ROM listing if needed, then launch the game from the menu.
-
-To capture your own progress logs, create `<SD>/system/logs/` — the multicore
-frontend writes `Multicore.log` there.
-
-## Configuration
-
-`fheroes2.cfg` lives next to the game data. Recognised keys:
-
-| Key | Notes |
-| :--- | :--- |
-| `videomode` | `320x240` for this device. Any QVGA value enables the wide layout. |
-| `sound` | `1` enables sound effects. |
-| `sound volume` | `0`–`10`. |
-| `music` | `off` here — the MIDI data is not present. |
-| `animation` | Lower is smoother on this hardware. |
-| `pocket pc` | `1` for the full-width map. |
 
 ## Building
 
@@ -157,6 +149,6 @@ Attribution required by the licences:
   contributors of madcock/sf2000_multicore.
 - SDL 1.2.15 is copyright © Sam Lantinga and the SDL contributors.
 
-Game assets are **not** included. *Heroes of Might and Magic II* was developed
-by New World Computing and published by 3DO; you must supply your own
-`HEROES2.AGG` from a legitimate copy.
+*Heroes of Might and Magic II* was developed by New World Computing and published
+by 3DO. The bundled **H2DEMO** demo is freely redistributable; the full game is
+not included and must be supplied by you from a legitimate copy.

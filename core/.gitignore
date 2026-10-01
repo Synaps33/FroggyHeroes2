@@ -1,0 +1,8 @@
+# build artefacts
+*.o
+*.a
+*.so
+# test output
+*.ppm
+*.png
+test_fheroes2

@@ -1,0 +1,5 @@
+AR := mipsel-linux-ar
+CXX := mipsel-linux-g++
+#AR := ar
+#CXX := g++
+CFLAGS := $(CFLAGS) -DWITHOUT_MOUSE -O3

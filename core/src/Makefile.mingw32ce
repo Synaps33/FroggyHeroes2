@@ -1,0 +1,13 @@
+ifndef WITHOUT_MIXER
+LIBS := $(LIBS) -lSDL -lmad -lvorbisfile -lvorbis -logg
+endif
+
+ifndef WITHOUT_UNICODE
+LIBS := $(LIBS) -lintl -lfreetype
+endif
+
+AR := arm-mingw32ce-ar
+CXX := arm-mingw32ce-g++
+WINDRES := arm-mingw32ce-windres
+CFLAGS := $(CFLAGS) -DWITH_KEYMAPPING -DWITHOUT_MOUSE -Os -static
+LIBS := -Wl,-Bstatic $(LIBS) -lmmtimer

@@ -22,7 +22,8 @@
 
 #ifdef SF2000
 // Vendored copy of the multicore frontend's dirent.h, under a distinct name so
-// it does not shadow the system <dirent.h> on host builds.
+// it does not shadow the system <dirent.h> on host builds (src/fheroes2/system
+// is on the include path).
 #include "sf2000_dirent.h"
 #else
 #include <dirent.h>

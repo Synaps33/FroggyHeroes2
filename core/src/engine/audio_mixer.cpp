@@ -402,6 +402,21 @@ int Mixer::Play(const u8* ptr, u32 size, int channel, bool loop)
 	if(ch)
 	{
 	    SDL_LockAudio();
+	    /* Clear the previous state before setting the new one.
+	     *
+	     * This used to be a plain |=, which left MIX_LOOP set on any channel
+	     * that had previously played a looping sound (ambience, from
+	     * AGG::PlayLOOPSound). Mixer::Stop() clears MIX_PLAY only, so such a
+	     * channel still counts as free, and the next one-shot sound from
+	     * AGG::PlaySound lands on it - inheriting the stale MIX_LOOP. The
+	     * end-of-sound test in AudioCallBack is
+	     *     if(!(ch.state & MIX_LOOP)) ch.state &= ~MIX_PLAY;
+	     * so the one-shot never stops, loops forever, and piles up on the few
+	     * channels the mixer has.
+	     *
+	     * MIX_REDUCE/MIX_ENHANCE are leftovers from a volume fade on the
+	     * previous sound; clearing them stops a reused channel from ramping. */
+	    ch->state &= ~(MIX_LOOP | MIX_PLAY | MIX_REDUCE | MIX_ENHANCE);
 	    ch->state |= (loop ? MIX_LOOP | MIX_PLAY : MIX_PLAY);
     	    ch->data = ptr;
 	    ch->length = size;

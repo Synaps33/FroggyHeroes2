@@ -976,6 +976,28 @@ void Castle::RedrawResourcePanel(const Point & pt)
     Display & display = Display::Get();
     const Resource::funds_t & resource = world.GetMyKingdom().GetFundsResource();
 
+    /* The seven counts below used to be printed straight from the funds_t
+     * fields, which are s32. Everything else in the game reads the kingdom
+     * through the accessors (GetFundsWood() etc.), and those narrow to u16 - so
+     * the panel and the game logic were looking at the same field two different
+     * ways. Whenever the field held a value outside 0..65535 the panel showed
+     * that raw value while purchases, which go through the accessors, behaved
+     * normally: a building panel showing "wood: -2119313624" next to a purchase
+     * that works fine.
+     *
+     * Resources are never negative in this game - Kingdom::OddFundsResource
+     * already clamps them to zero after spending. So clamp here too, the same
+     * way, and keep the panel consistent with the rest of the game. */
+    struct clamped_funds_t
+    {
+	s32 wood, mercury, ore, sulfur, crystal, gems, gold;
+    } shown;
+
+    #define SHOW(field) shown.field = (0 > resource.field) ? 0 : resource.field
+    SHOW(wood); SHOW(mercury); SHOW(ore);
+    SHOW(sulfur); SHOW(crystal); SHOW(gems); SHOW(gold);
+    #undef SHOW
+
     Point dst_pt = pt;
 
     Rect src_rt(dst_pt.x + 552, dst_pt.y + 262, 82, 192);
@@ -992,7 +1014,7 @@ void Castle::RedrawResourcePanel(const Point & pt)
     
     // count wood
     count.erase();
-    String::AddInt(count, resource.wood);
+    String::AddInt(count, shown.wood);
     text.Set(count, Font::SMALL);
     dst_pt.y += 22;
     text.Blit(dst_pt.x + (wood.w() - text.w()) / 2, dst_pt.y);
@@ -1005,7 +1027,7 @@ void Castle::RedrawResourcePanel(const Point & pt)
     
     // count sulfur
     count.erase();
-    String::AddInt(count, resource.sulfur);
+    String::AddInt(count, shown.sulfur);
     text.Set(count);
     dst_pt.y += 26;
     text.Blit(dst_pt.x + (sulfur.w() - text.w()) / 2, dst_pt.y);
@@ -1018,7 +1040,7 @@ void Castle::RedrawResourcePanel(const Point & pt)
     
     // count crystal
     count.erase();
-    String::AddInt(count, resource.crystal);
+    String::AddInt(count, shown.crystal);
     text.Set(count);
     dst_pt.y += 33;
     text.Blit(dst_pt.x + (crystal.w() - text.w()) / 2, dst_pt.y);
@@ -1031,7 +1053,7 @@ void Castle::RedrawResourcePanel(const Point & pt)
     
     // count mercury
     count.erase();
-    String::AddInt(count, resource.mercury);
+    String::AddInt(count, shown.mercury);
     text.Set(count);
     dst_pt.y += 34;
     text.Blit(dst_pt.x + (mercury.w() - text.w()) / 2, dst_pt.y);
@@ -1044,7 +1066,7 @@ void Castle::RedrawResourcePanel(const Point & pt)
     
     // count ore
     count.erase();
-    String::AddInt(count, resource.ore);
+    String::AddInt(count, shown.ore);
     text.Set(count);
     dst_pt.y += 26;
     text.Blit(dst_pt.x + (ore.w() - text.w()) / 2, dst_pt.y);
@@ -1057,7 +1079,7 @@ void Castle::RedrawResourcePanel(const Point & pt)
     
     // count gems
     count.erase();
-    String::AddInt(count, resource.gems);
+    String::AddInt(count, shown.gems);
     text.Set(count);
     dst_pt.y += 26;
     text.Blit(dst_pt.x + (gems.w() - text.w()) / 2, dst_pt.y);
@@ -1070,7 +1092,7 @@ void Castle::RedrawResourcePanel(const Point & pt)
     
     // count gold
     count.erase();
-    String::AddInt(count, resource.gold);
+    String::AddInt(count, shown.gold);
     text.Set(count);
     dst_pt.y += 24;
     text.Blit(dst_pt.x + (gold.w() - text.w()) / 2, dst_pt.y);

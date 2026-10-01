@@ -106,8 +106,10 @@ void libretro_video_flip(const void *pixels, int width, int height, int pitch)
     s_frame_flipped = true;
     s_accum_ms = 0;
 
-    libretro_audio_render();
-
+    /* Audio is emitted from retro_run(), once per frame. Doing it here as
+     * well made the mixer's callback run twice per frame whenever the frame
+     * contained enough SDL_Delay() calls to push s_accum_ms past 33ms, which
+     * consumed the sound data at double rate. */
     if (main_thread) {
         co_switch(main_thread);
     }
@@ -124,7 +126,6 @@ void libretro_delay(Uint32 ms)
     s_accum_ms += ms;
     while (s_accum_ms >= 33) {
         s_accum_ms -= 33;
-        libretro_audio_render();
         if (!s_frame_flipped && video_cb) {
             video_cb(s_libretro_framebuffer, 320, 240, 320 * sizeof(uint16_t));
         }
@@ -359,9 +360,13 @@ void retro_run(void)
         co_switch(game_thread);
     }
 
-    if (!s_frame_flipped) {
-        libretro_audio_render();
-    }
+    /* Exactly one audio buffer per frame, emitted here rather than from the
+     * flip/delay paths. The frontend drives retro_run() once per video frame,
+     * so this is the only place with a reliable one-to-one mapping between
+     * rendered frames and mixer callbacks - rendering it from the flip and
+     * from the delay accumulator both double-emitted whenever a frame's delays
+     * totalled more than 33ms. */
+    libretro_audio_render();
 }
 
 static std::string extract_directory(const std::string &path)

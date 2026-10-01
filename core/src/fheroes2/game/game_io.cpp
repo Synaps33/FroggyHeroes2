@@ -24,6 +24,8 @@
 #include <sstream>
 #include <cstring>
 #include <ctime>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include "zzlib.h"
 #include "settings.h"
 #include "kingdom.h"
@@ -36,11 +38,61 @@
 #include "settings.h"
 #include "tools.h"
 
+#ifdef SF2000
+/* Directory creation on this platform goes through the multicore frontend,
+ * which wraps the firmware's fs_mkdir. newlib's mkdir() is not wired up here.
+ * The same frontend object provides opendir/readdir/closedir that Dir uses, so
+ * the dependency is not new. */
+extern "C" int create_dir(const char *path);
+#else
+static int create_dir(const char *path)
+{
+    return mkdir(path, S_IRWXU);
+}
+#endif
+
+/* Create every missing component of a path, left to right.
+ *
+ * create_dir() maps to a single fs_mkdir on the console, which cannot make a
+ * nested path in one go - so "…/files/save" needs "…/files" to exist first. */
+static void EnsureDirectory(const std::string &path)
+{
+    if(path.empty()) return;
+
+    std::string current;
+
+    for(std::string::size_type pos = 0; pos <= path.size(); ++pos)
+    {
+	if(pos == path.size() || SEPARATOR == path[pos])
+	{
+	    if(!current.empty()) create_dir(current.c_str());
+	}
+
+	if(pos < path.size()) current += path[pos];
+    }
+}
+
 std::string Game::IO::last_name;
 
 bool Game::Save(const std::string &fn)
 {
     DEBUG(DBG_GAME , DBG_INFO, "Game::Save: " << fn);
+
+    // The engine writes savegames to <gamedir>/files/save/ but nothing in the
+    // game ever creates that directory - there is no mkdir call anywhere in the
+    // source. On a fresh SD card the file cannot be opened, std::ofstream
+    // fails, Save() returns false and the dialog reports nothing, so the save
+    // silently disappears. Create the path before writing.
+    if(!fn.empty())
+    {
+	std::string dir = fn;
+	const std::string::size_type pos = dir.find_last_of(SEPARATOR);
+	if(std::string::npos != pos)
+	{
+	    dir.erase(pos + 1);
+	    EnsureDirectory(dir);
+	}
+    }
 
     if(Settings::Get().ExtRewriteConfirm() && FilePresent(fn) &&
 	(std::string::npos == fn.find("autosave.sav") || Settings::Get().ExtAutosaveConfirm()) &&
